@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { PageLoader } from "@/components/ui/page-loader";
 import { PasswordInput } from "@/components/auth/password-input";
 import { SocialLoginButtons } from "@/components/auth/social-login-buttons";
 import { Button } from "@/components/ui/button";
@@ -112,12 +113,12 @@ function LoginPageInner() {
     >
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {registeredNotice ? (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
+          <p className="rounded-2xl border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-sm font-medium text-emerald-900 shadow-sm">
             Account created. Sign in with your email and password to continue.
           </p>
         ) : null}
         {apiError ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-sm">
             {apiError}
           </p>
         ) : null}
@@ -160,10 +161,12 @@ function LoginPageInner() {
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3">
-        <div className="h-px flex-1 bg-slate-200" />
-        <span className="text-xs uppercase tracking-wider text-slate-400">Or</span>
-        <div className="h-px flex-1 bg-slate-200" />
+      <div className="my-6 flex items-center gap-3">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+        <span className="text-[11px] font-semibold uppercase tracking-[0.15em] text-slate-400">
+          Or continue with
+        </span>
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
       </div>
 
       <SocialLoginButtons />
@@ -179,13 +182,7 @@ function LoginPageInner() {
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen items-center justify-center app-shell-bg text-sm text-slate-500">
-          Loading...
-        </main>
-      }
-    >
+    <Suspense fallback={<PageLoader message="Opening sign in…" />}>
       <LoginPageInner />
     </Suspense>
   );

@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -56,6 +57,14 @@ public class ApiExceptionHandler {
         String message = ex.getMessage() == null ? "Invalid request" : ex.getMessage();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(baseBody(HttpStatus.BAD_REQUEST, message));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+        log.warn("HTTP method not supported: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(baseBody(HttpStatus.METHOD_NOT_ALLOWED,
+                        ex.getMessage() != null ? ex.getMessage() : "Method not allowed"));
     }
 
     @ExceptionHandler(Exception.class)

@@ -19,13 +19,21 @@ export function SocialLoginButtons() {
   return (
     <div className="grid grid-cols-2 gap-3">
       <a href={`${apiBaseUrl}/oauth2/authorization/google`} className="w-full">
-        <Button variant="outline" type="button" className="w-full">
+        <Button
+          variant="outline"
+          type="button"
+          className="w-full border-slate-200/90 bg-white shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:shadow-md"
+        >
           <GoogleIcon />
           Google
         </Button>
       </a>
       <a href={`${apiBaseUrl}/oauth2/authorization/github`} className="w-full">
-        <Button variant="outline" type="button" className="w-full">
+        <Button
+          variant="outline"
+          type="button"
+          className="w-full border-slate-200/90 bg-white shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:shadow-md"
+        >
           <Github className="h-4 w-4" />
           GitHub
         </Button>

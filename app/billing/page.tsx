@@ -23,6 +23,7 @@ import {
   type PaymentOrder,
   type PaymentStatus,
 } from "@/lib/api/payments";
+import { PageLoader } from "@/components/ui/page-loader";
 import { clearSession, getSession } from "@/lib/auth/session";
 
 type LoadState = "checking" | "loading" | "ready" | "error";
@@ -173,11 +174,7 @@ export default function BillingPage() {
   }
 
   if (loadState === "checking" || loadState === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg text-sm text-slate-500">
-        Loading your billing history...
-      </main>
-    );
+    return <PageLoader message="Loading your billing history…" />;
   }
 
   const orders = summary?.orders ?? [];
@@ -192,9 +189,10 @@ export default function BillingPage() {
   );
 
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <header className="rounded-3xl bg-brand-gradient p-6 text-white shadow-soft md:p-8">
+    <main className="relative min-h-screen overflow-hidden bg-[#f4f6fb] p-4 md:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_70%_-10%,rgba(99,102,241,0.08),transparent_55%)]" />
+      <div className="relative mx-auto max-w-5xl space-y-6">
+        <header className="rounded-[1.75rem] border border-white/15 bg-brand-gradient p-6 text-white shadow-[0_28px_60px_-24px_rgba(79,70,229,0.45)] md:p-8">
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 text-xs font-semibold text-white/85 hover:text-white"
@@ -202,7 +200,9 @@ export default function BillingPage() {
             <ArrowLeft className="h-3.5 w-3.5" />
             Back to dashboard
           </Link>
-          <h1 className="mt-3 text-3xl font-bold">Billing & invoices</h1>
+          <h1 className="font-display mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">
+            Billing & invoices
+          </h1>
           <p className="mt-2 max-w-2xl text-sm text-white/90">
             Manage your Premium upgrades, download invoices, and review past
             payments.

@@ -16,6 +16,7 @@ import {
   Video,
   X,
 } from "lucide-react";
+import { PageLoader } from "@/components/ui/page-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { extractErrorMessage } from "@/lib/api/client";
@@ -262,16 +263,13 @@ export default function AdminLiveSessionsPage() {
   }
 
   if (loadState === "checking" || loadState === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg text-sm text-slate-500">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading live sessions...
-      </main>
-    );
+    return <PageLoader message="Loading live sessions…" />;
   }
 
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
+    <main className="relative min-h-screen overflow-hidden bg-[#f4f6fb] p-4 md:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_60%_-10%,rgba(99,102,241,0.07),transparent_55%)]" />
+      <div className="relative mx-auto max-w-6xl space-y-5">
         <div className="flex items-center justify-between">
           <Link
             href="/admin/dashboard"
@@ -288,11 +286,13 @@ export default function AdminLiveSessionsPage() {
           </Link>
         </div>
 
-        <header className="rounded-3xl bg-brand-gradient p-6 text-white shadow-soft md:p-8">
+        <header className="rounded-[1.75rem] border border-white/15 bg-brand-gradient p-6 text-white shadow-[0_28px_60px_-24px_rgba(79,70,229,0.45)] md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm text-white/85">Mentor operations</p>
-              <h1 className="mt-1 text-3xl font-bold">Live sessions manager</h1>
+              <h1 className="font-display mt-1 text-3xl font-extrabold tracking-tight md:text-4xl">
+                Live sessions manager
+              </h1>
               <p className="mt-2 max-w-2xl text-sm text-white/90">
                 Schedule doubt-clearing sessions, mock interviews, and community
                 Q&amp;As. Students see sessions tied to the courses they&apos;re

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { AuthShell } from "@/components/auth/auth-shell";
+import { PageLoader } from "@/components/ui/page-loader";
 import { PasswordInput } from "@/components/auth/password-input";
 import { Button } from "@/components/ui/button";
 import { confirmPasswordReset } from "@/lib/api/auth";
@@ -74,12 +75,12 @@ function ResetPasswordInner() {
     >
       {missingToken ? (
         <div className="space-y-3">
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-sm">
             This reset link is missing its token. Please request a new one.
           </p>
           <Link
             href="/forgot-password"
-            className="inline-flex w-full items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+            className="inline-flex w-full items-center justify-center rounded-2xl bg-brand-gradient px-4 py-3 text-sm font-bold text-white shadow-glow-sm transition hover:brightness-110"
           >
             Request a new link
           </Link>
@@ -87,12 +88,12 @@ function ResetPasswordInner() {
       ) : (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {apiError ? (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+            <p className="rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-700 shadow-sm">
               {apiError}
             </p>
           ) : null}
           {successMessage ? (
-            <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+            <p className="rounded-2xl border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-sm font-medium text-emerald-900 shadow-sm">
               {successMessage}
             </p>
           ) : null}
@@ -125,13 +126,7 @@ function ResetPasswordInner() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen items-center justify-center app-shell-bg text-sm text-slate-500">
-          Loading...
-        </main>
-      }
-    >
+    <Suspense fallback={<PageLoader message="Loading reset form…" />}>
       <ResetPasswordInner />
     </Suspense>
   );

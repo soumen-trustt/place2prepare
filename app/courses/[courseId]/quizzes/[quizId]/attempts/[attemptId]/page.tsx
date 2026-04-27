@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { extractErrorMessage } from "@/lib/api/client";
 import { clearSession, getSession } from "@/lib/auth/session";
+import { PageLoader } from "@/components/ui/page-loader";
 import {
   getQuizAttempt,
   submitQuizAttempt,
@@ -180,11 +181,7 @@ export default function QuizAttemptPage() {
   );
 
   if (loadState === "checking" || loadState === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg p-6 text-sm text-slate-500">
-        Loading quiz attempt...
-      </main>
-    );
+    return <PageLoader message="Loading quiz attempt…" />;
   }
 
   if (loadState === "error" || !attempt) {

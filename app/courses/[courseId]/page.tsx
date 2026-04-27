@@ -41,6 +41,7 @@ import {
   getCourseLiveSessions,
   type LiveSession,
 } from "@/lib/api/live-sessions";
+import { PageLoader } from "@/components/ui/page-loader";
 import { startCheckout } from "@/lib/api/payments";
 
 type LoadState = "checking" | "loading" | "ready" | "error";
@@ -179,11 +180,7 @@ export default function CourseDetailPage() {
   }, [courseId, router]);
 
   if (loadState === "checking" || loadState === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg p-6 text-sm text-slate-500">
-        Loading course...
-      </main>
-    );
+    return <PageLoader message="Loading course…" />;
   }
 
   const homeHref = homePathForRole(role);
@@ -238,8 +235,9 @@ export default function CourseDetailPage() {
   const nextLesson = lessons?.lessons.find((item) => !item.completed) ?? lessons?.lessons[0];
 
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
-      <div className="mx-auto max-w-5xl">
+    <main className="relative min-h-screen overflow-hidden bg-[#f4f6fb] p-4 md:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-15%,rgba(99,102,241,0.07),transparent_55%)]" />
+      <div className="relative mx-auto max-w-5xl">
         <div className="flex items-center justify-between gap-3">
           <Link
             href="/courses"
@@ -256,7 +254,7 @@ export default function CourseDetailPage() {
           </Link>
         </div>
 
-        <header className="mt-5 rounded-3xl bg-brand-gradient p-6 text-white shadow-soft md:p-8">
+        <header className="mt-5 rounded-[1.75rem] border border-white/15 bg-brand-gradient p-6 text-white shadow-[0_28px_60px_-24px_rgba(79,70,229,0.45)] md:p-8">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 font-semibold uppercase tracking-wide">
               {course.subject}

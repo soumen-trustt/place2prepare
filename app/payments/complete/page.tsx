@@ -4,6 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
+import { PageLoader } from "@/components/ui/page-loader";
 import { confirmMockOrder } from "@/lib/api/payments";
 import { extractErrorMessage } from "@/lib/api/client";
 import { getSession } from "@/lib/auth/session";
@@ -57,22 +58,28 @@ function CompleteInner() {
   }, [orderIdParam, router]);
 
   return (
-    <main className="flex min-h-screen items-center justify-center app-shell-bg p-6">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f4f6fb] p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_0%,rgba(99,102,241,0.1),transparent_55%)]" />
+      <div className="relative w-full max-w-md rounded-[1.75rem] border border-slate-200/80 bg-white/95 p-9 text-center shadow-[0_24px_60px_-28px_rgba(15,23,42,0.15)] ring-1 ring-white backdrop-blur-sm">
         {state === "processing" ? (
           <>
-            <Loader2 className="mx-auto h-10 w-10 animate-spin text-indigo-600" />
-            <h1 className="mt-4 text-xl font-bold text-slate-900">
+            <div className="relative mx-auto w-fit">
+              <div className="absolute inset-0 animate-pulse rounded-full bg-indigo-400/25 blur-xl" />
+              <Loader2 className="relative mx-auto h-11 w-11 animate-spin text-indigo-600" strokeWidth={2} />
+            </div>
+            <h1 className="font-display mt-5 text-xl font-extrabold tracking-tight text-slate-900">
               Confirming your payment…
             </h1>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
               Please wait while we activate Premium on your account.
             </p>
           </>
         ) : state === "success" ? (
           <>
-            <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
-            <h1 className="mt-4 text-2xl font-bold text-slate-900">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 ring-2 ring-emerald-100">
+              <CheckCircle2 className="h-9 w-9 text-emerald-500" strokeWidth={2} />
+            </div>
+            <h1 className="font-display mt-5 text-2xl font-extrabold tracking-tight text-slate-900">
               Premium activated
             </h1>
             <p className="mt-2 text-sm text-slate-600">
@@ -83,16 +90,16 @@ function CompleteInner() {
             <p className="mt-1 text-xs text-slate-500">
               Redirecting you to your billing page…
             </p>
-            <div className="mt-5 flex justify-center gap-2">
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/billing"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                className="rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-bold text-white shadow-glow-sm transition hover:brightness-110"
               >
                 Go to billing
               </Link>
               <Link
                 href="/dashboard"
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-slate-50"
               >
                 Dashboard
               </Link>
@@ -100,21 +107,23 @@ function CompleteInner() {
           </>
         ) : (
           <>
-            <XCircle className="mx-auto h-12 w-12 text-rose-500" />
-            <h1 className="mt-4 text-xl font-bold text-slate-900">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-50 ring-2 ring-rose-100">
+              <XCircle className="h-9 w-9 text-rose-500" strokeWidth={2} />
+            </div>
+            <h1 className="font-display mt-5 text-xl font-extrabold tracking-tight text-slate-900">
               Payment could not be confirmed
             </h1>
             <p className="mt-2 text-sm text-slate-600">{error}</p>
-            <div className="mt-5 flex justify-center gap-2">
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Link
                 href="/billing"
-                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
               >
                 Open billing
               </Link>
               <Link
                 href="/dashboard"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+                className="rounded-xl bg-brand-gradient px-5 py-2.5 text-sm font-bold text-white shadow-glow-sm hover:brightness-110"
               >
                 Back to dashboard
               </Link>
@@ -128,13 +137,7 @@ function CompleteInner() {
 
 export default function PaymentCompletePage() {
   return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen items-center justify-center app-shell-bg text-sm text-slate-500">
-          Loading…
-        </main>
-      }
-    >
+    <Suspense fallback={<PageLoader message="Preparing checkout…" />}>
       <CompleteInner />
     </Suspense>
   );

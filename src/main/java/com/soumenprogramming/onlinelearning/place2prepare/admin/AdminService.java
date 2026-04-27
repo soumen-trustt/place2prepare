@@ -6,6 +6,7 @@ import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.AdminStudent
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.AssignCourseRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.CreateCourseRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.CreateSubjectRequest;
+import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.UpdateEnrollmentRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.StudentEnrollmentResponse;
 import com.soumenprogramming.onlinelearning.place2prepare.auth.session.UserSessionService;
 import com.soumenprogramming.onlinelearning.place2prepare.course.Course;
@@ -110,6 +111,17 @@ public class AdminService {
                 .toList();
     }
 
+    public List<AdminStudentResponse> getAdmins() {
+        return userRepository.findByRoleOrderByCreatedAtDesc(Role.ADMIN).stream()
+                .map(user -> new AdminStudentResponse(
+                        user.getId(),
+                        user.getFullName(),
+                        user.getEmail(),
+                        user.getRole().name()
+                ))
+                .toList();
+    }
+
     public AdminStudentProfileResponse getStudentProfile(Long studentId) {
         User student = userRepository.findById(studentId)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Student not found"));
@@ -183,6 +195,66 @@ public class AdminService {
                 adminEmail
         ));
         notificationService.notifyCourseAssigned(student, course, planType);
+        return getStudentProfile(studentId);
+    }
+
+    @Transactional
+    public AdminStudentProfileResponse updateEnrollment(Long studentId,
+                                                        Long enrollmentId,
+                                                        UpdateEnrollmentRequest request,
+                                                        String adminEmail) {
+        User student = userRepository.findById(studentId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Student not found"));
+        if (student.getRole() != Role.STUDENT) {
+            throw new ResponseStatusException(BAD_REQUEST, "Enrollments apply only to student accounts");
+        }
+        Enrollment enrollment = enrollmentRepository.findById(enrollmentId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Enrollment not found"));
+        if (!enrollment.getUser().getId().equals(studentId)) {
+            throw new ResponseStatusException(NOT_FOUND, "Enrollment not found for student");
+        }
+
+        boolean hasChange = false;
+        if (request.planType() != null && !request.planType().isBlank()) {
+            String planType = request.planType().trim().toUpperCase();
+            if (!SUPPORTED_PLAN_TYPES.contains(planType)) {
+                throw new ResponseStatusException(BAD_REQUEST, "Plan type must be BASIC or PREMIUM");
+            }
+            Course course = enrollment.getCourse();
+            if (course.isPremium() && !"PREMIUM".equals(planType)) {
+                throw new ResponseStatusException(BAD_REQUEST, "This course requires a PREMIUM plan");
+            }
+            enrollment.setPlanType(planType);
+            hasChange = true;
+        }
+        if (request.status() != null && !request.status().isBlank()) {
+            try {
+                EnrollmentStatus newStatus = EnrollmentStatus.valueOf(request.status().trim().toUpperCase());
+                enrollment.setStatus(newStatus);
+                hasChange = true;
+            } catch (IllegalArgumentException ex) {
+                throw new ResponseStatusException(BAD_REQUEST, "Status must be ACTIVE or COMPLETED");
+            }
+        }
+        if (request.progressPercentage() != null) {
+            enrollment.setProgressPercentage(request.progressPercentage());
+            hasChange = true;
+        }
+        if (request.lessonsLeft() != null) {
+            enrollment.setLessonsLeft(request.lessonsLeft());
+            hasChange = true;
+        }
+        if (!hasChange) {
+            throw new ResponseStatusException(BAD_REQUEST, "Provide at least one field to update");
+        }
+
+        enrollmentRepository.save(enrollment);
+        Course course = enrollment.getCourse();
+        activityLogRepository.save(new ActivityLog(
+                student,
+                "Enrollment updated: " + course.getTitle(),
+                adminEmail
+        ));
         return getStudentProfile(studentId);
     }
 

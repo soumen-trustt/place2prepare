@@ -53,7 +53,7 @@ export function MarketingFooter() {
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-glow-sm transition-transform duration-200 group-hover:scale-105">
                 <GraduationCap className="h-5 w-5 text-white" />
               </div>
-              <span className="text-[17px] font-bold text-white">
+              <span className="font-display text-[17px] font-bold text-white">
                 Place2Prepare
               </span>
             </Link>

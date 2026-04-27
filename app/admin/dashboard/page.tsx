@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,6 +11,7 @@ import {
   FileText,
   Brain,
   ShieldCheck,
+  Pencil,
   Sparkles,
   Video,
 } from "lucide-react";
@@ -18,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { logoutUser } from "@/lib/api/auth";
 import NotificationBell from "@/components/notifications/notification-bell";
+import { PageLoader } from "@/components/ui/page-loader";
 import {
   assignCourseToStudent,
   deleteStudent,
@@ -25,41 +27,63 @@ import {
   createSubject,
   getAdminCourses,
   getAdminOverview,
+  getAdminAdmins,
   getAdminStudentProfile,
   getAdminStudents,
   getAdminSubjects,
   removeCourseFromStudent,
+  updateStudentEnrollment,
   type AdminOverview,
   type AdminStudentProfile,
   type AdminStudent,
   type Course,
+  type StudentEnrollment,
   type Subject,
 } from "@/lib/api/admin";
+import { ApiError, extractErrorMessage } from "@/lib/api/client";
 
 function StatCard({
   title,
   value,
   icon,
+  scrollToId,
 }: {
   title: string;
   value: string | number;
   icon: React.ReactNode;
+  /** Fragment e.g. `#admin-students` — card becomes a link that jumps to that section */
+  scrollToId?: string;
 }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+  const inner = (
+    <>
+      <div className="absolute inset-x-0 top-0 h-0.5 bg-brand-gradient opacity-90" />
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-slate-600">{title}</p>
-        <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">{icon}</div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{title}</p>
+        <div className="rounded-xl bg-indigo-50 p-2.5 text-indigo-600 shadow-sm">{icon}</div>
       </div>
-      <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
-    </div>
+      <p className="font-display mt-2 text-2xl font-extrabold tracking-tight text-slate-900">{value}</p>
+    </>
   );
+
+  const className =
+    "group relative block overflow-hidden rounded-[1.25rem] border border-slate-200/90 bg-white p-5 shadow-card transition hover:-translate-y-0.5 hover:border-indigo-200 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2";
+
+  if (scrollToId) {
+    return (
+      <a href={scrollToId} className={className}>
+        {inner}
+      </a>
+    );
+  }
+
+  return <div className={className}>{inner}</div>;
 }
 
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [overview, setOverview] = useState<AdminOverview | null>(null);
   const [students, setStudents] = useState<AdminStudent[]>([]);
+  const [admins, setAdmins] = useState<AdminStudent[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [error, setError] = useState("");
@@ -89,6 +113,17 @@ export default function AdminDashboardPage() {
     premium: false,
   });
 
+  const [editingEnrollmentId, setEditingEnrollmentId] = useState<number | null>(null);
+  const [enrollmentEditForm, setEnrollmentEditForm] = useState({
+    planType: "BASIC",
+    status: "ACTIVE",
+    progressPercentage: 0,
+    lessonsLeft: 0,
+  });
+
+  /** Cancels prior student-profile fetch when switching students so stale responses do not overwrite the UI. */
+  const studentProfileFetchRef = useRef<AbortController | null>(null);
+
   const token = typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   const role = typeof window !== "undefined" ? localStorage.getItem("userRole") : null;
 
@@ -114,14 +149,17 @@ export default function AdminDashboardPage() {
     setLoading(true);
     setError("");
     try {
-      const [overviewData, studentData, subjectData, courseData] = await Promise.all([
-        getAdminOverview(token),
-        getAdminStudents(token),
-        getAdminSubjects(token),
-        getAdminCourses(token),
-      ]);
+      const [overviewData, studentData, adminData, subjectData, courseData] =
+        await Promise.all([
+          getAdminOverview(token),
+          getAdminStudents(token),
+          getAdminAdmins(token),
+          getAdminSubjects(token),
+          getAdminCourses(token),
+        ]);
       setOverview(overviewData);
       setStudents(studentData);
+      setAdmins(adminData);
       setSubjects(subjectData);
       setCourses(courseData);
       setIsAuthChecking(false);
@@ -145,7 +183,7 @@ export default function AdminDashboardPage() {
   );
 
   if (isAuthChecking) {
-    return null;
+    return <PageLoader message="Loading admin console…" />;
   }
 
   async function onCreateSubject() {
@@ -194,13 +232,19 @@ export default function AdminDashboardPage() {
 
   async function openStudentProfile(studentId: number) {
     if (!token) return;
+    studentProfileFetchRef.current?.abort();
+    const controller = new AbortController();
+    studentProfileFetchRef.current = controller;
     setError("");
+    setEditingEnrollmentId(null);
     try {
-      const profile = await getAdminStudentProfile(token, studentId);
+      const profile = await getAdminStudentProfile(token, studentId, controller.signal);
+      if (studentProfileFetchRef.current !== controller) return;
       setSelectedStudentId(studentId);
       setSelectedStudentProfile(profile);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load student profile");
+      if (err instanceof ApiError && err.status === 0) return;
+      setError(extractErrorMessage(err, "Failed to load student profile"));
     }
   }
 
@@ -253,14 +297,61 @@ export default function AdminDashboardPage() {
     }
   }
 
+  function startEnrollmentEdit(item: StudentEnrollment) {
+    setError("");
+    setSuccess("");
+    setEditingEnrollmentId(item.enrollmentId);
+    setEnrollmentEditForm({
+      planType: item.planType,
+      status: item.status,
+      progressPercentage: item.progress,
+      lessonsLeft: item.lessonsLeft,
+    });
+  }
+
+  function cancelEnrollmentEdit() {
+    setEditingEnrollmentId(null);
+  }
+
+  async function onSaveEnrollmentEdit() {
+    if (!token || !selectedStudentId || editingEnrollmentId === null) return;
+    setError("");
+    setSuccess("");
+    setLoading(true);
+    try {
+      const profile = await updateStudentEnrollment(
+        token,
+        selectedStudentId,
+        editingEnrollmentId,
+        {
+          planType: enrollmentEditForm.planType,
+          status: enrollmentEditForm.status,
+          progressPercentage: enrollmentEditForm.progressPercentage,
+          lessonsLeft: enrollmentEditForm.lessonsLeft,
+        }
+      );
+      setSelectedStudentProfile(profile);
+      setEditingEnrollmentId(null);
+      setSuccess("Enrollment updated.");
+      await loadData();
+    } catch (err) {
+      setError(extractErrorMessage(err, "Couldn't update enrollment."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
-      <div className="mx-auto max-w-[1400px] space-y-5">
-        <header className="rounded-3xl bg-brand-gradient p-6 text-white shadow-soft md:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#f4f6fb] p-4 md:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_80%_0%,rgba(99,102,241,0.09),transparent_50%)]" />
+      <div className="relative mx-auto max-w-[1400px] space-y-5">
+        <header className="relative rounded-[1.75rem] border border-white/20 bg-brand-gradient p-6 text-white shadow-[0_28px_60px_-24px_rgba(79,70,229,0.45)] md:p-8">
+          <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm text-white/85">Administrative Control Center</p>
-              <h1 className="mt-1 text-3xl font-bold">Place2Prepare Admin Dashboard</h1>
+              <h1 className="font-display mt-1 text-3xl font-extrabold tracking-tight md:text-4xl">
+                Place2Prepare Admin Dashboard
+              </h1>
               <p className="mt-2 text-sm text-white/90">
                 Manage courses, subjects, and students with full platform visibility.
               </p>
@@ -288,26 +379,87 @@ export default function AdminDashboardPage() {
         </header>
 
         {error ? (
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-sm">
             {error}
           </p>
         ) : null}
         {success ? (
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+          <p className="rounded-2xl border border-emerald-200/80 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900 shadow-sm">
             {success}
           </p>
         ) : null}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <StatCard title="Total Students" value={overview?.totalStudents ?? 0} icon={<Users className="h-4 w-4" />} />
-          <StatCard title="Total Admins" value={overview?.totalAdmins ?? 0} icon={<ShieldCheck className="h-4 w-4" />} />
-          <StatCard title="Total Subjects" value={overview?.totalSubjects ?? 0} icon={<GraduationCap className="h-4 w-4" />} />
-          <StatCard title="Total Courses" value={overview?.totalCourses ?? 0} icon={<BookOpen className="h-4 w-4" />} />
-          <StatCard title="Total Enrollments" value={overview?.totalEnrollments ?? 0} icon={<Activity className="h-4 w-4" />} />
+          <StatCard
+            title="Total Students"
+            value={overview?.totalStudents ?? 0}
+            icon={<Users className="h-4 w-4" />}
+            scrollToId="#admin-students"
+          />
+          <StatCard
+            title="Total Admins"
+            value={overview?.totalAdmins ?? 0}
+            icon={<ShieldCheck className="h-4 w-4" />}
+            scrollToId="#admin-admins"
+          />
+          <StatCard
+            title="Total Subjects"
+            value={overview?.totalSubjects ?? 0}
+            icon={<GraduationCap className="h-4 w-4" />}
+            scrollToId="#admin-subjects"
+          />
+          <StatCard
+            title="Total Courses"
+            value={overview?.totalCourses ?? 0}
+            icon={<BookOpen className="h-4 w-4" />}
+            scrollToId="#admin-course-catalog"
+          />
+          <StatCard
+            title="Total Enrollments"
+            value={overview?.totalEnrollments ?? 0}
+            icon={<Activity className="h-4 w-4" />}
+            scrollToId="#admin-enrollments"
+          />
+        </section>
+
+        <section
+          id="admin-admins"
+          className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">Administrators</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Accounts with admin access ({admins.length} shown). Student accounts are listed separately below.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {admins.map((admin) => (
+              <div
+                key={admin.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-100 bg-indigo-50/50 px-3 py-2.5"
+              >
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{admin.fullName}</p>
+                  <p className="text-xs text-slate-500">{admin.email}</p>
+                </div>
+                <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-800">
+                  {admin.role}
+                </span>
+              </div>
+            ))}
+            {admins.length === 0 ? (
+              <p className="text-sm text-slate-500">No administrator accounts yet.</p>
+            ) : null}
+          </div>
         </section>
 
         <section className="grid gap-5 xl:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div
+            id="admin-subjects"
+            className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
             <h2 className="text-lg font-bold text-slate-900">Add New Subject</h2>
             <div className="mt-4 space-y-3">
               <Input
@@ -336,7 +488,10 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div
+            id="admin-add-course"
+            className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
             <h2 className="text-lg font-bold text-slate-900">Add New Course</h2>
             <div className="mt-4 space-y-3">
               <Input
@@ -418,7 +573,10 @@ export default function AdminDashboardPage() {
         </section>
 
         <section className="grid gap-5 xl:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div
+            id="admin-students"
+            className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
             <h3 className="text-lg font-bold text-slate-900">Students</h3>
             <div className="mt-3 space-y-2">
               {students.map((student) => (
@@ -445,7 +603,10 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div
+            id="admin-course-catalog"
+            className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+          >
             <h3 className="text-lg font-bold text-slate-900">Courses Catalog</h3>
             <div className="mt-3 space-y-2">
               {courses.map((course) => (
@@ -492,7 +653,10 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <section
+          id="admin-enrollments"
+          className="scroll-mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+        >
           <h3 className="text-lg font-bold text-slate-900">Student Profile & Course Access</h3>
           {!selectedStudentProfile ? (
             <p className="mt-2 text-sm text-slate-500">
@@ -562,30 +726,143 @@ export default function AdminDashboardPage() {
 
               <div className="lg:col-span-2">
                 <h4 className="font-semibold text-slate-900">Enrolled Courses</h4>
-                <div className="mt-3 space-y-2">
-                  {selectedStudentProfile.enrolledCourses.map((item) => (
-                    <div
-                      key={item.enrollmentId}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{item.courseTitle}</p>
-                        <p className="text-xs text-slate-500">
-                          {item.subject} - {item.status} - {item.progress}% progress
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700">
-                        {item.planType}
-                      </span>
-                      <button
-                        type="button"
-                        className="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                        onClick={() => onRemoveCourseFromStudent(item.enrollmentId)}
+                <div className="mt-3 space-y-3">
+                  {selectedStudentProfile.enrolledCourses.map((item) => {
+                    const courseMeta = courses.find((c) => c.id === item.courseId);
+                    const requiresPremium = courseMeta?.premium === true;
+                    const isEditing = editingEnrollmentId === item.enrollmentId;
+
+                    return (
+                      <div
+                        key={item.enrollmentId}
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm"
                       >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{item.courseTitle}</p>
+                            <p className="text-xs text-slate-500">
+                              {item.subject} · {item.lessonsLeft} lessons left
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {!isEditing ? (
+                              <>
+                                <span className="rounded-full bg-violet-100 px-2 py-1 text-xs font-semibold text-violet-700">
+                                  {item.planType}
+                                </span>
+                                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
+                                  {item.status}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                                  onClick={() => startEnrollmentEdit(item)}
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                  onClick={() => onRemoveCourseFromStudent(item.enrollmentId)}
+                                >
+                                  Remove
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {!isEditing ? (
+                          <p className="mt-2 text-xs text-slate-600">
+                            Progress: <span className="font-semibold">{item.progress}%</span>
+                          </p>
+                        ) : (
+                          <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-medium text-slate-700">Plan type</label>
+                              <select
+                                className="h-10 w-full rounded-lg border border-input bg-white px-2 text-sm"
+                                value={enrollmentEditForm.planType}
+                                onChange={(e) =>
+                                  setEnrollmentEditForm((p) => ({ ...p, planType: e.target.value }))
+                                }
+                              >
+                                <option value="BASIC" disabled={requiresPremium}>
+                                  BASIC
+                                </option>
+                                <option value="PREMIUM">PREMIUM</option>
+                              </select>
+                              {requiresPremium ? (
+                                <p className="text-[11px] text-amber-700">
+                                  This course requires PREMIUM access.
+                                </p>
+                              ) : null}
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-medium text-slate-700">Status</label>
+                              <select
+                                className="h-10 w-full rounded-lg border border-input bg-white px-2 text-sm"
+                                value={enrollmentEditForm.status}
+                                onChange={(e) =>
+                                  setEnrollmentEditForm((p) => ({ ...p, status: e.target.value }))
+                                }
+                              >
+                                <option value="ACTIVE">ACTIVE</option>
+                                <option value="COMPLETED">COMPLETED</option>
+                              </select>
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-medium text-slate-700">
+                                Progress (%)
+                              </label>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={100}
+                                value={String(enrollmentEditForm.progressPercentage)}
+                                onChange={(e) =>
+                                  setEnrollmentEditForm((p) => ({
+                                    ...p,
+                                    progressPercentage: Number.parseInt(e.target.value, 10) || 0,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-xs font-medium text-slate-700">
+                                Lessons left
+                              </label>
+                              <Input
+                                type="number"
+                                min={0}
+                                value={String(enrollmentEditForm.lessonsLeft)}
+                                onChange={(e) =>
+                                  setEnrollmentEditForm((p) => ({
+                                    ...p,
+                                    lessonsLeft: Number.parseInt(e.target.value, 10) || 0,
+                                  }))
+                                }
+                              />
+                            </div>
+                            <div className="flex flex-wrap gap-2 sm:col-span-2">
+                              <Button type="button" size="sm" onClick={onSaveEnrollmentEdit} loading={loading}>
+                                Save changes
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={cancelEnrollmentEdit}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   {selectedStudentProfile.enrolledCourses.length === 0 ? (
                     <p className="text-sm text-slate-500">No courses assigned yet.</p>
                   ) : null}
