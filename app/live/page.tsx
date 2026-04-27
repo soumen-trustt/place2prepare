@@ -21,6 +21,7 @@ import {
   type LiveSession,
   type LiveSessionCalendar,
 } from "@/lib/api/live-sessions";
+import { PageLoader } from "@/components/ui/page-loader";
 import { clearSession, getSession, homePathForRole } from "@/lib/auth/session";
 
 type LoadState = "checking" | "loading" | "ready" | "error";
@@ -192,18 +193,15 @@ export default function LiveCalendarPage() {
   const past = useMemo(() => calendar?.past ?? [], [calendar]);
 
   if (loadState === "checking" || loadState === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg text-sm text-slate-500">
-        Loading your live calendar...
-      </main>
-    );
+    return <PageLoader message="Loading your live calendar…" />;
   }
 
   const role = getSession()?.role ?? "STUDENT";
 
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
-      <div className="mx-auto max-w-5xl">
+    <main className="relative min-h-screen overflow-hidden bg-[#f4f6fb] p-4 md:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_40%_-10%,rgba(99,102,241,0.08),transparent_55%)]" />
+      <div className="relative mx-auto max-w-5xl">
         <Link
           href={homePathForRole(role)}
           className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-indigo-600 hover:text-indigo-500"
@@ -212,7 +210,7 @@ export default function LiveCalendarPage() {
           Back to dashboard
         </Link>
 
-        <header className="relative overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-soft md:p-8">
+        <header className="relative mb-6 overflow-hidden rounded-[1.75rem] border border-slate-800/25 bg-slate-950 p-6 text-white shadow-[0_28px_60px_-28px_rgba(15,23,42,0.35)] md:p-8">
           <Image
             src="/hero-study-session.png"
             alt=""
@@ -224,7 +222,9 @@ export default function LiveCalendarPage() {
           <div className="absolute inset-0 page-hero-overlay" />
           <div className="relative">
             <p className="text-sm text-white/85">Live classroom</p>
-            <h1 className="mt-1 text-3xl font-bold">Live sessions</h1>
+            <h1 className="font-display mt-1 text-3xl font-extrabold tracking-tight md:text-4xl">
+              Live sessions
+            </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/90">
               Mentor-led doubt clearing, mock interviews, and community Q&amp;A.
               Sessions linked to courses you&apos;re enrolled in will show a join
@@ -234,7 +234,7 @@ export default function LiveCalendarPage() {
         </header>
 
         {errorMessage ? (
-          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="mt-4 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-sm">
             {errorMessage}
           </p>
         ) : null}

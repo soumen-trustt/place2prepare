@@ -16,6 +16,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { PageLoader } from "@/components/ui/page-loader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { extractErrorMessage } from "@/lib/api/client";
@@ -223,11 +224,7 @@ export default function AdminLessonsPage() {
   }
 
   if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg p-6 text-sm text-slate-500">
-        Loading lesson manager...
-      </main>
-    );
+    return <PageLoader message="Loading lesson manager…" />;
   }
 
   if (!course) {

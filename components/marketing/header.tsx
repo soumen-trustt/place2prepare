@@ -62,17 +62,17 @@ export function MarketingHeader() {
       <header
         className={`sticky top-0 z-40 transition-all duration-300 ${
           scrolled
-            ? "border-b border-slate-200/60 bg-white/80 shadow-sm backdrop-blur-xl"
-            : "border-b border-transparent bg-white/60 backdrop-blur-md"
+            ? "border-b border-slate-200/70 bg-white/85 shadow-[0_8px_30px_-12px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+            : "border-b border-slate-200/40 bg-white/70 backdrop-blur-xl"
         }`}
       >
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-4 py-3.5 md:px-6">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-4 py-3 md:px-6 md:py-4">
           {/* Logo */}
           <Link href="/" className="group flex items-center gap-2.5">
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-brand-gradient shadow-glow-sm transition-transform duration-200 group-hover:scale-105">
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-[17px] font-bold tracking-tight text-slate-900">
+            <span className="font-display text-[17px] font-bold tracking-tight text-slate-900">
               Place2Prepare
             </span>
           </Link>
@@ -80,7 +80,7 @@ export function MarketingHeader() {
           {/* Desktop nav */}
           <nav
             aria-label="Primary"
-            className="hidden items-center gap-1 md:flex"
+            className="hidden items-center gap-0.5 rounded-2xl border border-slate-200/60 bg-slate-50/80 p-1 md:flex"
           >
             {NAV_LINKS.map((link) => {
               const active =
@@ -91,15 +91,12 @@ export function MarketingHeader() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
+                  className={`relative rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-150 ${
                     active
-                      ? "text-indigo-700"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      ? "bg-white text-indigo-700 shadow-sm ring-1 ring-slate-200/80"
+                      : "text-slate-600 hover:bg-white/70 hover:text-slate-900"
                   }`}
                 >
-                  {active && (
-                    <span className="absolute inset-x-2 bottom-1 h-0.5 rounded-full bg-brand-gradient" />
-                  )}
                   {link.label}
                 </Link>
               );

@@ -6,6 +6,7 @@ import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.AdminStudent
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.AssignCourseRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.CreateCourseRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.CreateSubjectRequest;
+import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.UpdateEnrollmentRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.course.dto.CourseResponse;
 import com.soumenprogramming.onlinelearning.place2prepare.course.dto.SubjectResponse;
 import jakarta.validation.Valid;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -41,6 +43,11 @@ public class AdminController {
         return adminService.getStudents();
     }
 
+    @GetMapping("/admins")
+    public List<AdminStudentResponse> admins() {
+        return adminService.getAdmins();
+    }
+
     @GetMapping("/students/{studentId}")
     public AdminStudentProfileResponse studentProfile(@PathVariable Long studentId) {
         return adminService.getStudentProfile(studentId);
@@ -51,6 +58,22 @@ public class AdminController {
                                                     @Valid @RequestBody AssignCourseRequest request,
                                                     Authentication authentication) {
         return adminService.assignCourseToStudent(studentId, request, authentication.getName());
+    }
+
+    /**
+     * PATCH and PUT both update enrollment (same body). Use one {@link RequestMapping} so both methods
+     * register — stacking {@code @PatchMapping} and {@code @PutMapping} on one method does not reliably
+     * expose PUT in Spring MVC 7.
+     */
+    @RequestMapping(value = "/students/{studentId}/courses/{enrollmentId}", method = {
+            RequestMethod.PATCH,
+            RequestMethod.PUT
+    })
+    public AdminStudentProfileResponse updateEnrollment(@PathVariable Long studentId,
+                                                        @PathVariable Long enrollmentId,
+                                                        @Valid @RequestBody UpdateEnrollmentRequest request,
+                                                        Authentication authentication) {
+        return adminService.updateEnrollment(studentId, enrollmentId, request, authentication.getName());
     }
 
     @DeleteMapping("/students/{studentId}/courses/{enrollmentId}")

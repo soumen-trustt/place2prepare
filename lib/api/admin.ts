@@ -83,6 +83,10 @@ export function getAdminStudents(token: string) {
   return apiRequest<AdminStudent[]>("/api/v1/admin/students", { token });
 }
 
+export function getAdminAdmins(token: string) {
+  return apiRequest<AdminStudent[]>("/api/v1/admin/admins", { token });
+}
+
 export function getAdminSubjects(token: string) {
   return apiRequest<Subject[]>("/api/v1/admin/subjects", { token });
 }
@@ -162,8 +166,15 @@ export function deleteAdminLesson(
   );
 }
 
-export function getAdminStudentProfile(token: string, studentId: number) {
-  return apiRequest<AdminStudentProfile>(`/api/v1/admin/students/${studentId}`, { token });
+export function getAdminStudentProfile(
+  token: string,
+  studentId: number,
+  signal?: AbortSignal
+) {
+  return apiRequest<AdminStudentProfile>(`/api/v1/admin/students/${studentId}`, {
+    token,
+    signal,
+  });
 }
 
 export function assignCourseToStudent(
@@ -185,6 +196,23 @@ export function removeCourseFromStudent(
   return apiRequest<AdminStudentProfile>(
     `/api/v1/admin/students/${studentId}/courses/${enrollmentId}`,
     { method: "DELETE", token }
+  );
+}
+
+export function updateStudentEnrollment(
+  token: string,
+  studentId: number,
+  enrollmentId: number,
+  payload: {
+    planType?: string;
+    status?: string;
+    progressPercentage?: number;
+    lessonsLeft?: number;
+  }
+) {
+  return apiRequest<AdminStudentProfile>(
+    `/api/v1/admin/students/${studentId}/courses/${enrollmentId}`,
+    { method: "PUT", token, body: payload }
   );
 }
 

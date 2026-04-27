@@ -22,6 +22,7 @@ import {
   type LessonCompletionResult,
   type LessonDetail,
 } from "@/lib/api/lessons";
+import { PageLoader } from "@/components/ui/page-loader";
 import { toEmbeddableVideo } from "@/lib/utils/video";
 
 type LoadState = "checking" | "loading" | "ready" | "error";
@@ -114,11 +115,7 @@ export default function LessonPage() {
   }
 
   if (loadState === "checking" || loadState === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg p-6 text-sm text-slate-500">
-        Loading lesson...
-      </main>
-    );
+    return <PageLoader message="Loading lesson…" />;
   }
 
   if (loadState === "error" || !lesson) {

@@ -21,6 +21,7 @@ import {
 import { logoutUser } from "@/lib/api/auth";
 import { extractErrorMessage } from "@/lib/api/client";
 import NotificationBell from "@/components/notifications/notification-bell";
+import { PageLoader } from "@/components/ui/page-loader";
 import {
   clearSession,
   getSession,
@@ -162,14 +163,7 @@ export default function DashboardPage() {
   }, [router]);
 
   if (loadState === "checking" || loadState === "loading") {
-    return (
-      <main className="flex min-h-screen items-center justify-center app-shell-bg p-6">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600" />
-          <p className="text-sm text-slate-500">Loading your dashboard…</p>
-        </div>
-      </main>
-    );
+    return <PageLoader message="Loading your dashboard…" />;
   }
 
   const enrolledCourses: EnrolledCourse[] = dashboardData?.activeCourses ?? [];
@@ -180,26 +174,30 @@ export default function DashboardPage() {
   );
 
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
-      <div className="mx-auto max-w-[1400px]">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#f4f6fb] p-4 md:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_20%_0%,rgba(99,102,241,0.08),transparent_50%)]" />
+      <div className="relative mx-auto max-w-[1400px]">
         {/* Header */}
-        <header className="relative mb-6 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-soft md:p-8">
-          <Image
-            src="/hero-study-session.png"
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover object-center opacity-45"
-            aria-hidden
-          />
-          <div className="absolute inset-0 page-hero-overlay" />
+        <header className="relative mb-6 rounded-[1.75rem] border border-slate-800/20 bg-slate-950 p-6 text-white shadow-[0_28px_60px_-28px_rgba(15,23,42,0.35)] md:p-8">
+          {/* Clip rounded corners only on the photo layer — not the whole header — so notification dropdowns are not cut off */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[1.75rem]">
+            <Image
+              src="/hero-study-session.png"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover object-center opacity-45"
+              aria-hidden
+            />
+            <div className="absolute inset-0 page-hero-overlay" />
+          </div>
 
-          <div className="relative flex flex-wrap items-start justify-between gap-4">
+          <div className="relative z-10 flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-sm text-white/80">
                 Welcome back, {dashboardData?.fullName ?? "Learner"} 👋
               </p>
-              <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
+              <h1 className="font-display mt-1 text-3xl font-extrabold tracking-tight md:text-4xl">
                 Student Dashboard
               </h1>
               <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -219,7 +217,7 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="relative mt-5 flex flex-wrap items-center gap-2.5">
+          <div className="relative z-10 mt-5 flex flex-wrap items-center gap-2.5">
             <Link
               href="/courses"
               className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-indigo-700 shadow transition hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
@@ -254,7 +252,7 @@ export default function DashboardPage() {
         </header>
 
         {errorMessage && (
-          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-red-200/80 bg-red-50 px-4 py-3 text-sm font-medium text-red-800 shadow-sm">
             <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
             {errorMessage}
           </div>
@@ -299,9 +297,9 @@ export default function DashboardPage() {
         {/* Main content */}
         <section className="mt-5 grid gap-5 lg:grid-cols-3">
           {/* Active courses */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card lg:col-span-2">
+          <div className="rounded-[1.35rem] border border-slate-200/90 bg-white/95 p-5 shadow-card backdrop-blur-sm lg:col-span-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900">My Active Courses</h2>
+              <h2 className="font-display text-base font-bold text-slate-900">My Active Courses</h2>
               <Link
                 href="/courses"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700"

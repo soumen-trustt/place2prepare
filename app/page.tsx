@@ -116,6 +116,7 @@ export default function HomePage() {
           alt="Students preparing for placement interviews in a modern study room"
           fill
           priority
+          quality={92}
           sizes="100vw"
           className="object-cover object-center"
         />
@@ -128,7 +129,7 @@ export default function HomePage() {
               <Zap className="h-3.5 w-3.5 text-amber-300" />
               Built for final-year B.Tech students
             </div>
-            <h1 className="mt-5 text-balance text-4xl font-extrabold leading-[1.06] tracking-tight md:text-6xl">
+            <h1 className="mt-5 text-balance font-display text-4xl font-extrabold leading-[1.06] tracking-tight md:text-6xl">
               Placement preparation with a real interview room feel.
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-white/82 md:text-lg">

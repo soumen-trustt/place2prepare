@@ -138,10 +138,11 @@ export default function CatalogPage() {
   const hasActiveFilters = activeSubject !== ALL_SUBJECTS || query;
 
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
-      <div className="mx-auto max-w-[1400px]">
+    <main className="relative min-h-screen overflow-hidden bg-[#f4f6fb] p-4 md:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_-10%,rgba(99,102,241,0.07),transparent_55%)]" />
+      <div className="relative mx-auto max-w-[1400px]">
         {/* Header */}
-        <header className="relative mb-5 overflow-hidden rounded-3xl bg-slate-950 p-6 text-white shadow-soft md:p-8">
+        <header className="relative mb-5 overflow-hidden rounded-[1.75rem] border border-slate-800/30 bg-slate-950 p-6 text-white shadow-[0_28px_60px_-28px_rgba(15,23,42,0.35)] md:p-8">
           <Image
             src="/hero-study-session.png"
             alt=""
@@ -160,7 +161,7 @@ export default function CatalogPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
               Back to {homeHref === "/" ? "home" : "dashboard"}
             </Link>
-            <h1 className="mt-3 text-3xl font-extrabold tracking-tight">
+            <h1 className="font-display mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">
               Browse the catalog
             </h1>
             <p className="mt-2 max-w-2xl text-sm text-white/85">
@@ -213,7 +214,7 @@ export default function CatalogPage() {
         </header>
 
         {/* Subject filters */}
-        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
+        <section className="mb-5 rounded-[1.35rem] border border-slate-200/90 bg-white/95 p-5 shadow-card backdrop-blur-sm">
           <div className="flex items-center gap-2 text-slate-700">
             <SlidersHorizontal className="h-4 w-4 text-indigo-500" />
             <h2 className="text-sm font-bold">Filter by subject</h2>
