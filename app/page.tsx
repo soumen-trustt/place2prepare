@@ -9,7 +9,6 @@ import {
   GraduationCap,
   LineChart,
   MessagesSquare,
-  PlayCircle,
   Sparkles,
   Star,
   Zap,
@@ -17,8 +16,14 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { MarketingShell } from "@/components/marketing/page-shell";
+import {
+  HomeClosingCtaActions,
+  HomeClosingCtaIntro,
+  HomeHeroActions,
+} from "@/components/marketing/home-auth-aware-ctas";
 import { getAllPosts } from "@/lib/blog/posts";
 import { TESTIMONIALS } from "@/lib/marketing/testimonials";
+import { getPublicPremiumPrice } from "@/lib/api/public-pricing";
 import { PRICING_PLANS } from "@/lib/marketing/pricing";
 import { SITE_NAME, SITE_URL } from "@/lib/marketing/site";
 
@@ -88,9 +93,23 @@ const STATS = [
   { value: "4.9★", label: "Average rating", icon: Star },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
   const latestPosts = getAllPosts().slice(0, 3);
   const featuredTestimonials = TESTIMONIALS.slice(0, 3);
+
+  let premiumInr =
+    PRICING_PLANS.find((p) => p.id === "premium")?.priceInr ?? 1499;
+  try {
+    const remote = await getPublicPremiumPrice({ next: { revalidate: 120 } });
+    if (typeof remote.priceInr === "number" && Number.isFinite(remote.priceInr)) {
+      premiumInr = Math.round(remote.priceInr * 100) / 100;
+    }
+  } catch {
+    // API down — keep catalog fallback
+  }
+  const pricingPlansDisplay = PRICING_PLANS.map((p) =>
+    p.id === "premium" ? { ...p, priceInr: premiumInr } : p
+  );
 
   const orgJsonLd = {
     "@context": "https://schema.org",
@@ -137,22 +156,7 @@ export default function HomePage() {
               mentor sessions, and walk into interviews with a sharper plan.
             </p>
 
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                href="/register"
-                className="group inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-slate-950 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98]"
-              >
-                Create your free account
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
-              <Link
-                href="/courses"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/28 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/18 active:scale-[0.98]"
-              >
-                <PlayCircle className="h-4 w-4" />
-                Browse courses
-              </Link>
-            </div>
+            <HomeHeroActions />
 
             <div className="mt-8 grid max-w-2xl gap-3 sm:grid-cols-3">
               {HERO_HIGHLIGHTS.map((item) => (
@@ -338,7 +342,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            {PRICING_PLANS.map((plan) => (
+            {pricingPlansDisplay.map((plan) => (
               <div
                 key={plan.id}
                 className={`relative overflow-hidden rounded-2xl border p-6 transition hover:-translate-y-0.5 ${
@@ -449,25 +453,8 @@ export default function HomePage() {
             <br />
             The last step is an offer letter.
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-base text-white/85">
-            Create an account, pick a track, and let our mentors walk you
-            through the rest.
-          </p>
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href="/register"
-              className="group inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 text-sm font-bold text-indigo-700 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl active:scale-[0.98]"
-            >
-              Create your free account
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <Link
-              href="/pricing"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition hover:bg-white/20 active:scale-[0.98]"
-            >
-              See pricing
-            </Link>
-          </div>
+          <HomeClosingCtaIntro />
+          <HomeClosingCtaActions />
         </div>
       </section>
     </MarketingShell>

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GraduationCap, Menu, X } from "lucide-react";
 import { logoutUser } from "@/lib/api/auth";
+import { clearSession, dashboardPathForRole, getToken } from "@/lib/auth/session";
+import { useSessionSnapshot } from "@/lib/auth/use-session-snapshot";
 
 const NAV_LINKS = [
   { href: "/", label: "Home" },
@@ -15,19 +17,20 @@ const NAV_LINKS = [
   { href: "/faq", label: "FAQ" },
 ];
 
+/** Admins: marketing pages only (no Courses — catalog is for learners). */
+const ADMIN_PRIMARY_NAV = [
+  { href: "/", label: "Home" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/blog", label: "Blog" },
+  { href: "/about", label: "About" },
+  { href: "/faq", label: "FAQ" },
+];
+
 export function MarketingHeader() {
   const pathname = usePathname() ?? "/";
-  const [ready, setReady] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
+  const { isLoggedIn, role } = useSessionSnapshot();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  useEffect(() => {
-    setIsLoggedIn(Boolean(localStorage.getItem("accessToken")));
-    setRole(localStorage.getItem("userRole"));
-    setReady(true);
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 12);
@@ -41,21 +44,19 @@ export function MarketingHeader() {
   }, [pathname]);
 
   async function handleLogout() {
-    const token = localStorage.getItem("accessToken") ?? undefined;
+    const token = getToken() ?? undefined;
     try {
       await logoutUser(token);
     } catch {
       // ignore; we still clear local state
     } finally {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("userRole");
-      setIsLoggedIn(false);
-      setRole(null);
+      clearSession();
       window.location.href = "/login";
     }
   }
 
-  const dashboardHref = role === "ADMIN" ? "/admin/dashboard" : "/dashboard";
+  const isAdmin = isLoggedIn && role === "ADMIN";
+  const primaryNavLinks = isAdmin ? ADMIN_PRIMARY_NAV : NAV_LINKS;
 
   return (
     <>
@@ -82,7 +83,7 @@ export function MarketingHeader() {
             aria-label="Primary"
             className="hidden items-center gap-0.5 rounded-2xl border border-slate-200/60 bg-slate-50/80 p-1 md:flex"
           >
-            {NAV_LINKS.map((link) => {
+            {primaryNavLinks.map((link) => {
               const active =
                 link.href === "/"
                   ? pathname === "/"
@@ -105,22 +106,40 @@ export function MarketingHeader() {
 
           {/* Desktop CTA */}
           <div className="hidden items-center gap-2 md:flex">
-            {ready && isLoggedIn ? (
-              <>
-                <Link
-                  href={dashboardHref}
-                  className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-                >
-                  Dashboard
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="rounded-xl bg-brand-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow-sm transition hover:brightness-110 active:scale-[0.98]"
-                >
-                  Logout
-                </button>
-              </>
+            {isLoggedIn ? (
+              isAdmin ? (
+                <>
+                  <Link
+                    href="/admin/dashboard"
+                    className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    Admin dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="rounded-xl bg-brand-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow-sm transition hover:brightness-110 active:scale-[0.98]"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href={dashboardPathForRole(role)}
+                    className="rounded-lg px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    Dashboard
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="rounded-xl bg-brand-gradient px-4 py-2 text-sm font-semibold text-white shadow-glow-sm transition hover:brightness-110 active:scale-[0.98]"
+                  >
+                    Logout
+                  </button>
+                </>
+              )
             ) : (
               <>
                 <Link
@@ -162,7 +181,7 @@ export function MarketingHeader() {
           {/* Panel */}
           <nav className="absolute left-0 right-0 top-[61px] animate-fade-in border-b border-slate-200 bg-white/95 px-4 pb-6 pt-4 shadow-xl backdrop-blur-xl">
             <div className="space-y-1">
-              {NAV_LINKS.map((link) => {
+              {primaryNavLinks.map((link) => {
                 const active =
                   link.href === "/"
                     ? pathname === "/"
@@ -183,22 +202,40 @@ export function MarketingHeader() {
               })}
             </div>
             <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4">
-              {ready && isLoggedIn ? (
-                <>
-                  <Link
-                    href={dashboardHref}
-                    className="flex items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
-                  >
-                    Dashboard
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={handleLogout}
-                    className="flex items-center justify-center rounded-xl bg-brand-gradient px-4 py-3 text-sm font-semibold text-white"
-                  >
-                    Logout
-                  </button>
-                </>
+              {isLoggedIn ? (
+                isAdmin ? (
+                  <>
+                    <Link
+                      href="/admin/dashboard"
+                      className="flex items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+                    >
+                      Admin dashboard
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex items-center justify-center rounded-xl bg-brand-gradient px-4 py-3 text-sm font-semibold text-white"
+                    >
+                      Logout
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href={dashboardPathForRole(role)}
+                      className="flex items-center justify-center rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"
+                    >
+                      Dashboard
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="flex items-center justify-center rounded-xl bg-brand-gradient px-4 py-3 text-sm font-semibold text-white"
+                    >
+                      Logout
+                    </button>
+                  </>
+                )
               ) : (
                 <>
                   <Link

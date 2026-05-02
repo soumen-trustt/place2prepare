@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { PageLoader } from "@/components/ui/page-loader";
+import { MarketingShell } from "@/components/marketing/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { extractErrorMessage } from "@/lib/api/client";
@@ -403,11 +404,16 @@ export default function AdminQuizzesPage() {
   }
 
   if (!token || loading) {
-    return <PageLoader message="Loading quiz manager…" />;
+    return (
+      <MarketingShell>
+        <PageLoader message="Loading quiz manager…" />
+      </MarketingShell>
+    );
   }
 
   return (
-    <main className="min-h-screen app-shell-bg p-4 md:p-6">
+    <MarketingShell>
+      <div className="min-h-screen app-shell-bg p-4 md:p-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Link
@@ -906,6 +912,7 @@ export default function AdminQuizzesPage() {
           </section>
         </div>
       </div>
-    </main>
+      </div>
+    </MarketingShell>
   );
 }

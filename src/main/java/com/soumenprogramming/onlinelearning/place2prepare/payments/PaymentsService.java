@@ -52,7 +52,7 @@ public class PaymentsService {
     private final NotificationService notificationService;
     private final PaymentGateway gateway;
     private final boolean enabled;
-    private final BigDecimal premiumPrice;
+    private final PremiumPriceSettingService premiumPriceSettingService;
     private final String currency;
     private final String frontendBaseUrl;
 
@@ -66,7 +66,7 @@ public class PaymentsService {
                            NotificationService notificationService,
                            PaymentGateway gateway,
                            @Value("${app.payments.enabled:true}") boolean enabled,
-                           @Value("${app.payments.premium.price-inr:999}") BigDecimal premiumPrice,
+                           PremiumPriceSettingService premiumPriceSettingService,
                            @Value("${app.payments.premium.currency:INR}") String currency,
                            @Value("${app.frontend.base-url:http://localhost:3000}") String frontendBaseUrl) {
         this.orderRepository = orderRepository;
@@ -79,7 +79,7 @@ public class PaymentsService {
         this.notificationService = notificationService;
         this.gateway = gateway;
         this.enabled = enabled;
-        this.premiumPrice = premiumPrice;
+        this.premiumPriceSettingService = premiumPriceSettingService;
         this.currency = currency;
         this.frontendBaseUrl = frontendBaseUrl;
     }
@@ -132,13 +132,16 @@ public class PaymentsService {
                 user,
                 course,
                 PREMIUM,
-                premiumPrice,
+                premiumPriceSettingService.getEffectivePriceInr(),
                 currency,
                 gateway.provider()
         );
         order = orderRepository.save(order);
 
         String successUrl = frontendBaseUrl + "/payments/complete?orderId=" + order.getId();
+        if (StripePaymentGateway.PROVIDER.equals(gateway.provider())) {
+            successUrl = StripePaymentGateway.appendStripeSessionPlaceholder(successUrl);
+        }
         String cancelUrl = frontendBaseUrl + "/billing?cancelled=1";
 
         PaymentGateway.CheckoutSession session;
@@ -310,6 +313,27 @@ public class PaymentsService {
     }
 
     @Transactional
+    public PaymentOrderResponse getOrder(String email, Long orderId, String checkoutSessionId) {
+        User user = resolveUser(email);
+        PaymentOrder order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Order not found"));
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new ResponseStatusException(FORBIDDEN, "You don't own this order");
+        }
+
+        if (order.getStatus() == PaymentStatus.PENDING && checkoutSessionId != null && !checkoutSessionId.isBlank()) {
+            PaymentStatus resolved = gateway.resolveCheckoutStatus(order, checkoutSessionId);
+            if (resolved == PaymentStatus.COMPLETED) {
+                completeOrder(order);
+            } else if (resolved == PaymentStatus.FAILED || resolved == PaymentStatus.CANCELLED) {
+                failOrder(order, "Payment " + resolved.name().toLowerCase());
+            }
+        }
+
+        return toOrderResponse(order);
+    }
+
+    @Transactional
     public PaymentOrderResponse downgradeEnrollment(String email, Long courseId) {
         User user = resolveUser(email);
         Enrollment enrollment = enrollmentRepository.findByUserIdAndCourseId(user.getId(), courseId)
@@ -356,7 +380,7 @@ public class PaymentsService {
         return new BillingSummaryResponse(
                 gateway.provider(),
                 enabled,
-                premiumPrice,
+                premiumPriceSettingService.getEffectivePriceInr(),
                 currency,
                 orders,
                 invoices

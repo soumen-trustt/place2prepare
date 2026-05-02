@@ -27,9 +27,11 @@ public class PaymentWebhookController {
     @PostMapping("/webhook/{provider}")
     public ResponseEntity<Map<String, String>> webhook(
             @PathVariable String provider,
-            @RequestHeader(name = "X-Payment-Signature", required = false) String signature,
+            @RequestHeader(name = "Stripe-Signature", required = false) String stripeSignature,
+            @RequestHeader(name = "X-Payment-Signature", required = false) String legacySignature,
             @RequestBody(required = false) String payload
     ) {
+        String signature = "stripe".equalsIgnoreCase(provider) ? stripeSignature : legacySignature;
         paymentsService.handleWebhook(provider, payload == null ? "" : payload, signature);
         return ResponseEntity.ok(Map.of("status", "received"));
     }
