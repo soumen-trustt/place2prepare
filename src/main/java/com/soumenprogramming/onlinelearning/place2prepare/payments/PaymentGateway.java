@@ -29,6 +29,14 @@ public interface PaymentGateway {
         return null;
     }
 
+    /**
+     * Optional hook for providers that can reconcile a hosted checkout redirect with backend
+     * state when the user lands back on the app before the webhook arrives.
+     */
+    default PaymentStatus resolveCheckoutStatus(PaymentOrder order, String checkoutSessionId) {
+        return null;
+    }
+
     record CheckoutSession(String redirectUrl, String providerOrderId) {
     }
 

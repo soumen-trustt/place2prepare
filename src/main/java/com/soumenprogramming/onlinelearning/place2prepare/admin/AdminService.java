@@ -6,7 +6,9 @@ import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.AdminStudent
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.AssignCourseRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.CreateCourseRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.CreateSubjectRequest;
+import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.PremiumPriceResponse;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.UpdateEnrollmentRequest;
+import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.UpdatePremiumPriceRequest;
 import com.soumenprogramming.onlinelearning.place2prepare.admin.dto.StudentEnrollmentResponse;
 import com.soumenprogramming.onlinelearning.place2prepare.auth.session.UserSessionService;
 import com.soumenprogramming.onlinelearning.place2prepare.course.Course;
@@ -26,10 +28,12 @@ import com.soumenprogramming.onlinelearning.place2prepare.notify.NotificationRep
 import com.soumenprogramming.onlinelearning.place2prepare.notify.NotificationService;
 import com.soumenprogramming.onlinelearning.place2prepare.payments.InvoiceRepository;
 import com.soumenprogramming.onlinelearning.place2prepare.payments.PaymentOrderRepository;
+import com.soumenprogramming.onlinelearning.place2prepare.payments.PremiumPriceSettingService;
 import com.soumenprogramming.onlinelearning.place2prepare.practice.QuizAttemptRepository;
 import com.soumenprogramming.onlinelearning.place2prepare.user.Role;
 import com.soumenprogramming.onlinelearning.place2prepare.user.User;
 import com.soumenprogramming.onlinelearning.place2prepare.user.UserRepository;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,6 +62,8 @@ public class AdminService {
     private final NotificationRepository notificationRepository;
     private final PaymentOrderRepository paymentOrderRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PremiumPriceSettingService premiumPriceSettingService;
+    private final String premiumCurrency;
     private final int maxCoursesPerStudent;
 
     public AdminService(UserRepository userRepository,
@@ -73,6 +79,8 @@ public class AdminService {
                         NotificationRepository notificationRepository,
                         PaymentOrderRepository paymentOrderRepository,
                         InvoiceRepository invoiceRepository,
+                        PremiumPriceSettingService premiumPriceSettingService,
+                        @Value("${app.payments.premium.currency:INR}") String premiumCurrency,
                         @Value("${app.enrollment.max-courses-per-student:10}") int maxCoursesPerStudent) {
         this.userRepository = userRepository;
         this.subjectRepository = subjectRepository;
@@ -87,6 +95,8 @@ public class AdminService {
         this.notificationRepository = notificationRepository;
         this.paymentOrderRepository = paymentOrderRepository;
         this.invoiceRepository = invoiceRepository;
+        this.premiumPriceSettingService = premiumPriceSettingService;
+        this.premiumCurrency = premiumCurrency;
         this.maxCoursesPerStudent = Math.max(1, maxCoursesPerStudent);
     }
 
@@ -98,6 +108,23 @@ public class AdminService {
                 courseRepository.count(),
                 enrollmentRepository.count()
         );
+    }
+
+    public PremiumPriceResponse getPremiumPricing() {
+        return new PremiumPriceResponse(premiumPriceSettingService.getEffectivePriceInr(), premiumCurrency);
+    }
+
+    @Transactional
+    public PremiumPriceResponse updatePremiumPricing(UpdatePremiumPriceRequest request, String adminEmail) {
+        BigDecimal updated = premiumPriceSettingService.updatePriceInr(request.priceInr(), adminEmail);
+        User admin = userRepository.findByEmail(adminEmail.toLowerCase())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Admin user not found"));
+        activityLogRepository.save(new ActivityLog(
+                admin,
+                "Set Premium per-course checkout price to " + updated + " " + premiumCurrency,
+                adminEmail
+        ));
+        return new PremiumPriceResponse(updated, premiumCurrency);
     }
 
     public List<AdminStudentResponse> getStudents() {
